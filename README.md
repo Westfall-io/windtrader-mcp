@@ -9,12 +9,22 @@ actual valid syntax by invoking WindTrader from MCP tools.
 ## What this server exposes
 
 - `validate_sysml_text(sysml_text, file_name="model.sysml")`
-  - Writes provided SysMLv2 text to a temporary file.
-  - Calls WindTrader CLI validation.
+  - Pipes SysMLv2 text to WindTrader over stdin.
   - Returns `ok`, `exit_code`, `stdout`, `stderr`, and `command`.
 - `validate_sysml_file(path)`
-  - Validates a file already present on disk.
+  - Reads file content and validates by piping text over stdin.
 - Resource: `windtrader://about`
+
+## WindTrader CLI contract used by this MCP server
+
+The server invokes WindTrader in its documented argparse shape (flags only),
+for example:
+
+```bash
+windtrader --timeout 30
+```
+
+and sends SysML text on stdin.
 
 ## Install
 

@@ -73,47 +73,37 @@ class WindTraderServerTests(unittest.TestCase):
                     self.server._windtrader_bin()
         self.assertIn("Install it first", str(ctx.exception))
 
-    def test_run_validation_uses_primary_command_when_valid(self):
+    def test_run_validation_uses_stdin_contract(self):
         fake_result = types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
         with patch("windtrader_mcp.server._windtrader_bin", return_value="/usr/bin/windtrader"):
             with patch("windtrader_mcp.server.subprocess.run", return_value=fake_result) as mock_run:
-                result = self.server._run_validation(Path("model.sysml"))
+                result = self.server._run_validation("package Demo {}", timeout_seconds=30)
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["exit_code"], 0)
         self.assertEqual(result["stdout"], "ok")
-        self.assertEqual(result["command"], ["/usr/bin/windtrader", "validate", "model.sysml"])
-        self.assertEqual(mock_run.call_count, 1)
+        self.assertEqual(result["command"], ["/usr/bin/windtrader", "--timeout", "30"])
 
-    def test_run_validation_falls_back_when_unknown_command(self):
-        first = types.SimpleNamespace(returncode=2, stdout="", stderr="unknown command: validate")
-        second = types.SimpleNamespace(returncode=0, stdout="good", stderr="")
-        with patch("windtrader_mcp.server._windtrader_bin", return_value="/usr/bin/windtrader"):
-            with patch("windtrader_mcp.server.subprocess.run", side_effect=[first, second]) as mock_run:
-                result = self.server._run_validation(Path("model.sysml"))
+        kwargs = mock_run.call_args.kwargs
+        self.assertEqual(kwargs["input"], "package Demo {}")
+        self.assertTrue(kwargs["text"])
+        self.assertEqual(kwargs["timeout"], 35)
 
-        self.assertEqual(mock_run.call_count, 2)
-        self.assertTrue(result["ok"])
-        self.assertEqual(result["command"], ["/usr/bin/windtrader", "check", "model.sysml"])
-        self.assertEqual(result["stdout"], "good")
+    def test_run_validation_rejects_non_positive_timeout(self):
+        with self.assertRaises(ValueError):
+            self.server._run_validation("package Demo {}", timeout_seconds=0)
 
     def test_validate_sysml_text_runs_validation_and_returns_filename(self):
-        captured = {}
-
-        def fake_run_validation(path: Path):
-            captured["exists_during_validation"] = path.exists()
-            return {
-                "ok": True,
-                "exit_code": 0,
-                "command": ["windtrader", "validate", str(path)],
-                "stdout": "",
-                "stderr": "",
-            }
-
-        with patch("windtrader_mcp.server._run_validation", side_effect=fake_run_validation):
+        with patch("windtrader_mcp.server._run_validation", return_value={
+            "ok": True,
+            "exit_code": 0,
+            "command": ["windtrader", "--timeout", "30"],
+            "stdout": "",
+            "stderr": "",
+        }) as mock_validate:
             result = self.server.validate_sysml_text("package Demo {}", "demo.sysml")
 
-        self.assertTrue(captured["exists_during_validation"])
+        mock_validate.assert_called_once_with("package Demo {}")
         self.assertEqual(result["file_name"], "demo.sysml")
         self.assertTrue(result["ok"])
 
@@ -122,7 +112,7 @@ class WindTraderServerTests(unittest.TestCase):
             self.server.validate_sysml_file("/tmp/does-not-exist.sysml")
 
     def test_validate_sysml_file_works_for_existing_file(self):
-        with tempfile.NamedTemporaryFile("w", suffix=".sysml", delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile("w", suffix=".sysml", delete=False, encoding="utf-8") as temp_file:
             temp_file.write("package Demo {}")
             temp_path = Path(temp_file.name)
 
@@ -130,11 +120,13 @@ class WindTraderServerTests(unittest.TestCase):
             with patch("windtrader_mcp.server._run_validation", return_value={
                 "ok": True,
                 "exit_code": 0,
-                "command": ["windtrader", "validate", str(temp_path)],
+                "command": ["windtrader", "--timeout", "30"],
                 "stdout": "",
                 "stderr": "",
-            }):
+            }) as mock_validate:
                 result = self.server.validate_sysml_file(str(temp_path))
+
+            mock_validate.assert_called_once_with("package Demo {}")
             self.assertEqual(result["file_name"], temp_path.name)
             self.assertTrue(result["ok"])
         finally:

@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -38,63 +37,38 @@ def _windtrader_bin() -> str:
     )
 
 
-def _run_validation(file_path: Path, timeout_seconds: int = 30) -> dict[str, Any]:
-    """Execute WindTrader CLI validation and return command details."""
+def _run_validation(sysml_text: str, timeout_seconds: int = 30) -> dict[str, Any]:
+    """Execute WindTrader CLI validation by piping SysMLv2 text on stdin."""
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be > 0")
+
     binary = _windtrader_bin()
+    command = [binary, "--timeout", str(timeout_seconds)]
 
-    attempted_commands = [
-        [binary, "validate", str(file_path)],
-        [binary, "check", str(file_path)],
-    ]
-
-    last_result: subprocess.CompletedProcess[str] | None = None
-    used_command: list[str] | None = None
-
-    for command in attempted_commands:
-        result = subprocess.run(
-            command,
-            text=True,
-            capture_output=True,
-            timeout=timeout_seconds,
-            check=False,
-        )
-        used_command = command
-
-        # If command verb is recognized, stop trying fallbacks.
-        unknown_command = "unknown command" in (result.stderr or "").lower()
-        if not unknown_command:
-            last_result = result
-            break
-
-        last_result = result
-
-    if last_result is None or used_command is None:
-        raise RuntimeError("No validation command could be executed.")
+    result = subprocess.run(
+        command,
+        input=sysml_text,
+        text=True,
+        capture_output=True,
+        timeout=timeout_seconds + 5,
+        check=False,
+    )
 
     return {
-        "ok": last_result.returncode == 0,
-        "exit_code": last_result.returncode,
-        "command": used_command,
-        "stdout": (last_result.stdout or "").strip(),
-        "stderr": (last_result.stderr or "").strip(),
+        "ok": result.returncode == 0,
+        "exit_code": result.returncode,
+        "command": command,
+        "stdout": (result.stdout or "").strip(),
+        "stderr": (result.stderr or "").strip(),
     }
 
 
 @app.tool()
 def validate_sysml_text(sysml_text: str, file_name: str = "model.sysml") -> dict[str, Any]:
-    """Validate SysMLv2 text by writing it to a temp file and running WindTrader."""
-    suffix = Path(file_name).suffix or ".sysml"
-
-    with tempfile.NamedTemporaryFile("w", suffix=suffix, delete=False) as temp_file:
-        temp_file.write(sysml_text)
-        temp_path = Path(temp_file.name)
-
-    try:
-        result = _run_validation(temp_path)
-        result["file_name"] = file_name
-        return result
-    finally:
-        temp_path.unlink(missing_ok=True)
+    """Validate SysMLv2 text by piping it to the WindTrader CLI stdin."""
+    result = _run_validation(sysml_text)
+    result["file_name"] = file_name
+    return result
 
 
 @app.tool()
@@ -106,7 +80,8 @@ def validate_sysml_file(path: str) -> dict[str, Any]:
     if not file_path.is_file():
         raise ValueError(f"Path is not a file: {file_path}")
 
-    result = _run_validation(file_path)
+    sysml_text = file_path.read_text(encoding="utf-8")
+    result = _run_validation(sysml_text)
     result["file_name"] = file_path.name
     return result
 
