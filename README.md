@@ -53,6 +53,31 @@ export WINDTRADER_CMD=/path/to/windtrader
 windtrader-mcp
 ```
 
+## Docker image (GHCR)
+
+A multi-stage `Dockerfile` builds a self-contained image: Python + OpenJDK 21 +
+the `windtrader` CLI and the pre-cached `windtrader-java` JAR. The runtime container
+is fully **offline** (the EPL-2.0 JAR is baked in at build time; an
+`echo "part def P;" | windtrader` step pre-warms `WINDTRADER_CACHE_DIR`).
+
+```bash
+# Build locally (requires Docker with Buildx)
+docker build -t windtrader-mcp:local .
+
+# Run as an MCP stdio server
+docker run --rm -i windtrader-mcp:local
+
+# Pull from GHCR (public)
+docker pull ghcr.io/westfall-io/windtrader-mcp:main
+docker run --rm -i ghcr.io/westfall-io/windtrader-mcp:main
+```
+
+The image is built and published to GHCR by
+`.github/workflows/build-push.yml` on every push to `main` and on `v*` tags.
+
+License notices for the redistributed EPL-2.0 JAR ship inside the image at
+`/licenses/` (see `THIRD-PARTY-NOTICES.md`).
+
 ## Build and publish to PyPI
 
 ```bash
