@@ -24,12 +24,12 @@
 # Version of the windtrader CLI to install (immutable GitHub release tag).
 ARG WINDTRADER_VERSION=v0.1.2
 
-LABEL org.opencontainers.image.source="https://github.com/Westfall-io/windtrader-mcp"
-
 # ---------------------------------------------------------------------------
 # Stage 1: build — install the Python packages and pre-cache the validator JAR
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim-trixie AS build
+
+LABEL org.opencontainers.image.source="https://github.com/Westfall-io/windtrader-mcp"
 
 ARG WINDTRADER_VERSION
 
@@ -70,6 +70,8 @@ RUN set -eux; \
 # Stage 2: runtime — minimal Python + Java + the installed packages + cached jar
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim-trixie AS runtime
+
+LABEL org.opencontainers.image.source="https://github.com/Westfall-io/windtrader-mcp"
 
 # Pin the JRE explicitly: openjdk-21-jre-headless (required by the jar).
 RUN apt-get update \
