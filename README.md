@@ -53,6 +53,34 @@ export WINDTRADER_CMD=/path/to/windtrader
 windtrader-mcp
 ```
 
+## Serve over HTTP (Streamable HTTP transport)
+
+To serve once and let many remote MCP clients reach the same validator (instead
+of each agent spawning its own child process), run the HTTP transport:
+
+```bash
+export WINDTRADER_MCP_HOST=0.0.0.0   # bind all interfaces (required for a container)
+export WINDTRADER_MCP_PORT=8000
+windtrader-mcp-serve
+```
+
+The Streamable HTTP endpoint is `POST /mcp` (JSON-RPC; responses are
+`text/event-stream`). Host/port are read from `WINDTRADER_MCP_HOST` /
+`WINDTRADER_MCP_PORT`. The stdio `windtrader-mcp` entrypoint is unchanged and
+remains the default for local clients.
+
+Example MCP client config pointing at a remote server:
+
+```json
+{
+  "mcpServers": {
+    "windtrader": {
+      "url": "http://<host>:8000/mcp"
+    }
+  }
+}
+```
+
 ## Docker image (GHCR)
 
 A multi-stage `Dockerfile` builds a self-contained image: Python + OpenJDK 21 +

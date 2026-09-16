@@ -11,9 +11,18 @@ from unittest.mock import patch
 
 
 class _FakeFastMCP:
-    def __init__(self, name: str, instructions: str):
+    def __init__(
+        self,
+        name: str,
+        instructions: str,
+        host: str = "127.0.0.1",
+        port: int = 8000,
+        **kwargs,
+    ):
         self.name = name
         self.instructions = instructions
+        self.host = host
+        self.port = port
 
     def tool(self):
         def decorator(fn):
@@ -27,7 +36,8 @@ class _FakeFastMCP:
 
         return decorator
 
-    def run(self):
+    def run(self, transport: str = "stdio", mount_path: str | None = None):
+        self.last_transport = transport
         return None
 
 
@@ -131,6 +141,27 @@ class WindTraderServerTests(unittest.TestCase):
             self.assertTrue(result["ok"])
         finally:
             temp_path.unlink(missing_ok=True)
+
+
+    def test_main_runs_stdio_transport(self):
+        with patch("windtrader_mcp.server.app.run") as mock_run:
+            self.server.main()
+        mock_run.assert_called_once_with()
+
+    def test_serve_http_runs_streamable_http_transport(self):
+        with patch("windtrader_mcp.server.app.run") as mock_run:
+            self.server.serve_http()
+        mock_run.assert_called_once_with(transport="streamable-http")
+
+    def test_bind_host_port_from_env(self):
+        with patch.dict(
+            os.environ,
+            {"WINDTRADER_MCP_HOST": "0.0.0.0", "WINDTRADER_MCP_PORT": "9090"},
+            clear=False,
+        ):
+            loaded = _load_server_module()
+            self.assertEqual(loaded._MCP_HOST, "0.0.0.0")
+            self.assertEqual(loaded._MCP_PORT, 9090)
 
 
 if __name__ == "__main__":

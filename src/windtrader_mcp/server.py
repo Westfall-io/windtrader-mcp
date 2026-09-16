@@ -10,6 +10,12 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+# Bind address for the streamable-http transport (serve_http). The defaults
+# match FastMCP's stdio-safe loopback; the Helm chart / deployment sets
+# WINDTRADER_MCP_HOST=0.0.0.0 and WINDTRADER_MCP_PORT to expose the service.
+_MCP_HOST = os.environ.get("WINDTRADER_MCP_HOST", "127.0.0.1").strip() or "127.0.0.1"
+_MCP_PORT = int(os.environ.get("WINDTRADER_MCP_PORT", "8000").strip() or "8000")
+
 app = FastMCP(
     name="windtrader-mcp",
     instructions=(
@@ -17,6 +23,8 @@ app = FastMCP(
         "Pass SysMLv2 text to the validator tools and inspect stderr/stdout "
         "for parser errors."
     ),
+    host=_MCP_HOST,
+    port=_MCP_PORT,
 )
 
 
@@ -96,8 +104,29 @@ def about() -> str:
 
 
 def main() -> None:
-    """Run the MCP server over stdio."""
+    """Run the MCP server over stdio (default).
+
+    This is the transport used by local LLM/MCP clients (e.g. Hermes agents)
+    that spawn the server as a child process.
+    """
     app.run()
+
+
+def serve_http() -> None:
+    """Run the MCP server over the Streamable HTTP transport.
+
+    Serve once (typically in Kubernetes behind a Service/Ingress) so that any
+    number of remote MCP clients can reach the same validator, instead of each
+    agent spawning its own child process.
+
+    Host/port are read from ``WINDTRADER_MCP_HOST`` / ``WINDTRADER_MCP_PORT``
+    at import time. For a container/Deployment you must set
+    ``WINDTRADER_MCP_HOST=0.0.0.0`` so the server binds all interfaces; the
+    default loopback binding enables FastMCP's DNS-rebinding protection and
+    would not be reachable from outside. The Streamable HTTP endpoint is
+    ``/mcp`` (POST JSON-RPC; responses are text/event-stream).
+    """
+    app.run(transport="streamable-http")
 
 
 if __name__ == "__main__":

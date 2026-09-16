@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "windtrader-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server that wraps WindTrader to validate SysMLv2 syntax."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,6 +32,7 @@ Issues = "https://github.com/Westfall-io/windtrader-mcp/issues"
 
 [project.scripts]
 windtrader-mcp = "windtrader_mcp.server:main"
+windtrader-mcp-serve = "windtrader_mcp.server:serve_http"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/windtrader_mcp"]
