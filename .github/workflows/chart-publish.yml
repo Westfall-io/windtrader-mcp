@@ -9,8 +9,10 @@ env:
   REGISTRY: ghcr.io
   CHART_DIR: deploy/charts/windtrader-mcp
   # Chart package name and org/repo target.
+  # NOTE: OCI/registry references must be ALL LOWERCASE or helm push fails
+  # with "invalid_reference: invalid repository" (Docker/OCI path rules).
   CHART_NAME: windtrader-mcp
-  CHART_REPO: Westfall-io/windtrader-mcp
+  CHART_REPO: westfall-io/windtrader-mcp
 
 jobs:
   publish-chart:
