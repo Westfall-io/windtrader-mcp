@@ -1,0 +1,61 @@
+# Default values for the windtrader-mcp chart.
+# This is a YAML-formatted file. Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/westfall-io/windtrader-mcp
+  # Pull an immutable semver image tag. Use `latest` only for ad-hoc testing;
+  # deployments should pin a released version (e.g. 0.3.0).
+  tag: "0.3.0"
+  pullPolicy: IfNotPresent
+
+# The MCP server binds 0.0.0.0 inside the container so the Service can reach it.
+mcp:
+  host: "0.0.0.0"
+  port: 8000
+  # Path of the Streamable HTTP endpoint (POST JSON-RPC).
+  path: "/mcp"
+  # Where windtrader resolves the validator JAR at runtime; the chart is
+  # intentionally kept writable-agnostic — the image pre-caches it, so runtime
+  # is offline and this usually needs no override.
+  cacheDir: "/opt/windtrader-cache"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: windtrader-mcp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  # Typical for a JVM-backed validator process.
+  limits:
+    cpu: "1"
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# On an MCP Streamable HTTP server, traffic is interactive and stateful
+# (session-based), so use only a single replica to avoid cross-pod session loss.
+autoscaling:
+  enabled: false
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+imagePullSecrets: []
+
+podAnnotations: {}
+podLabels: {}

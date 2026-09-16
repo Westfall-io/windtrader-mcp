@@ -1,0 +1,15 @@
+The windtrader-mcp server is deployed.
+
+To reach the Streamable HTTP MCP endpoint inside the cluster:
+  {{ .Values.mcp.path }} on Service/{{ include "windtrader-mcp.fullname" . }} port {{ .Values.service.port }}
+
+Client config (point a remote MCP client at the Service):
+  {
+    "mcpServers": {
+      "windtrader": {
+        "url": "http://{{ include "windtrader-mcp.fullname" . }}:{{ .Values.service.port }}{{ .Values.mcp.path }}"
+      }
+    }
+  }
+
+If .Values.ingress.enabled is true, use the configured ingress host instead.
