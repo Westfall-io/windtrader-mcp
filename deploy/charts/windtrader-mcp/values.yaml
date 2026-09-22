@@ -6,8 +6,8 @@ replicaCount: 1
 image:
   repository: ghcr.io/westfall-io/windtrader-mcp
   # Pull an immutable semver image tag. Use `latest` only for ad-hoc testing;
-  # deployments should pin a released version (e.g. 0.3.0).
-  tag: "0.3.0"
+  # deployments should pin a released version (e.g. 0.3.1).
+  tag: "0.3.1"
   pullPolicy: IfNotPresent
 
 # The MCP server binds 0.0.0.0 inside the container so the Service can reach it.
