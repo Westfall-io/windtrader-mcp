@@ -81,6 +81,7 @@ RUN apt-get update \
 COPY --from=build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=build /usr/local/bin/windtrader /usr/local/bin/windtrader
 COPY --from=build /usr/local/bin/windtrader-mcp /usr/local/bin/windtrader-mcp
+COPY --from=build /usr/local/bin/windtrader-mcp-serve /usr/local/bin/windtrader-mcp-serve
 COPY --from=build /opt/windtrader-cache /opt/windtrader-cache
 
 # EPL-2.0 s.3.3: preserve the notices of the redistributed shaded JAR. The jar
