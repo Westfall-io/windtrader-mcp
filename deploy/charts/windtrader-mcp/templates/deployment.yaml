@@ -43,14 +43,12 @@ spec:
             - name: WINDTRADER_CACHE_DIR
               value: {{ .Values.mcp.cacheDir | quote }}
           livenessProbe:
-            httpGet:
-              path: {{ .Values.mcp.path }}
+            tcpSocket:
               port: mcp
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: {{ .Values.mcp.path }}
+            tcpSocket:
               port: mcp
             initialDelaySeconds: 3
             periodSeconds: 5

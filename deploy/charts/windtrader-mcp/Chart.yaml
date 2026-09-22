@@ -2,7 +2,7 @@ apiVersion: v2
 name: windtrader-mcp
 description: Helm chart for the windtrader-mcp Streamable HTTP MCP server (SysMLv2 validator)
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "0.3.1"
 home: https://github.com/Westfall-io/windtrader-mcp
 sources:
