@@ -15,14 +15,14 @@
 # container is fully offline and deterministic (no network, no GitHub dependency).
 #
 # Base image: python:3.12-slim-trixie => Debian trixie, which has openjdk-21-jre-
-# headless (required by windtrader-java 0.1.2). Debian bookworm only ships
+# headless (required by windtrader-java 0.1.4). Debian bookworm only ships
 # openjdk-17, which is too old for the jar. We install openjdk-21-jre-headless
 # explicitly rather than the default-jre-headless metapackage so a Debian default
 # change cannot silently downgrade Java to 17.
 ###############################################################################
 
 # Version of the windtrader CLI to install (immutable GitHub release tag).
-ARG WINDTRADER_VERSION=v0.1.2
+ARG WINDTRADER_VERSION=v0.1.3
 
 # ---------------------------------------------------------------------------
 # Stage 1: build — install the Python packages and pre-cache the validator JAR
@@ -52,7 +52,7 @@ COPY src /src/src
 RUN python -m pip install --no-cache-dir /src
 
 # Pre-cache + smoke-test the validator JAR so the runtime image is offline-capable.
-# get_jar_path resolves to $WINDTRADER_CACHE_DIR/jars/windtrader-java-0.1.2.jar.
+# get_jar_path resolves to $WINDTRADER_CACHE_DIR/jars/windtrader-java-0.1.4.jar.
 # We keep the CLI's output (no >/dev/null) so a failure here is diagnosable, and we
 # gate on (a) the jar being present, (b) the jar actually running under the installed
 # JRE via the jar's own stdin contract (valid -> exit 0, invalid -> exit 2).
@@ -60,9 +60,9 @@ ENV WINDTRADER_CACHE_DIR=/opt/windtrader-cache
 RUN set -eux; \
     echo "part def P;" | windtrader --timeout 120 \
       || echo "prewarm: windtrader exited $?" >&2; \
-    test -s "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.1.2.jar"; \
-    echo "part def P;" | java -jar "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.1.2.jar"; \
-    if echo "part { attrib mass; }" | java -jar "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.1.2.jar" 2>/dev/null; then \
+    test -s "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.1.4.jar"; \
+    echo "part def P;" | java -jar "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.1.4.jar"; \
+    if echo "part { attrib mass; }" | java -jar "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.1.4.jar" 2>/dev/null; then \
       echo "expected exit 2 for invalid input, got 0" >&2; exit 1; \
     fi
 
