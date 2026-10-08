@@ -139,6 +139,20 @@ class WindTraderServerTests(unittest.TestCase):
                     self.server._run_cli("export", "part def P;", timeout_seconds=30)
         self.assertIn("0.2.0", str(ctx.exception))
 
+    def test_run_cli_raises_on_stale_cli_unrecognized_arguments(self):
+        """windtrader <= 0.1.x had no subparsers: 'unrecognized arguments' must also be raised."""
+        fake_result = types.SimpleNamespace(
+            returncode=2,
+            stdout="",
+            stderr="usage: windtrader [-h] [--version] [--java-version VERSION] [--timeout TIMEOUT]\n"
+            "windtrader: error: unrecognized arguments: check",
+        )
+        with patch("windtrader_mcp.server._windtrader_bin", return_value="/usr/bin/windtrader"):
+            with patch("windtrader_mcp.server.subprocess.run", return_value=fake_result):
+                with self.assertRaises(RuntimeError) as ctx:
+                    self.server._run_cli("check", "part def P;", timeout_seconds=30)
+        self.assertIn("0.2.0", str(ctx.exception))
+
     def test_validate_sysml_text_runs_validation_and_returns_filename(self):
         with patch("windtrader_mcp.server._run_validation", return_value={
             "ok": True,

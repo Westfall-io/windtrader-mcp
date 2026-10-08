@@ -69,10 +69,18 @@ def _run_cli(subcommand: str, sysml_text: str, timeout_seconds: int = 30) -> dic
     stderr = (result.stderr or "").strip()
 
     # Distinguish a stale/wrong CLI (argparse rejects `check`/`export` as an
-    # unknown subcommand -> exit 2 with "invalid choice") from an invalid-SysML
-    # verdict (also exit 2). A bad subcommand is an environment/install error,
-    # not a model verdict, so raise instead of reporting "invalid SysML".
-    if result.returncode == 2 and "invalid choice" in stderr:
+    # unknown subcommand -> exit 2 with "invalid choice", or "unrecognized
+    # arguments" on windtrader <= 0.1.x which has no subparsers) from an
+    # invalid-SysML verdict (also exit 2). A bad subcommand is an
+    # environment/install error, not a model verdict, so raise instead of
+    # reporting "invalid SysML".
+    _ARGPARSE_SUBCOMMAND_ERRORS = (
+        "invalid choice",
+        "unrecognized arguments",
+    )
+    if result.returncode == 2 and any(
+        marker in stderr for marker in _ARGPARSE_SUBCOMMAND_ERRORS
+    ):
         raise RuntimeError(
             "The installed WindTrader CLI does not support the "
             f"{subcommand!r} subcommand (stale or wrong version). "
