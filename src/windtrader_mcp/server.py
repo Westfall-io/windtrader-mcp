@@ -51,6 +51,8 @@ def _run_cli(subcommand: str, sysml_text: str, timeout_seconds: int = 30) -> dic
     """Execute the WindTrader CLI subcommand by piping SysMLv2 text on stdin."""
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be > 0")
+    if timeout_seconds > 3600:
+        raise ValueError("timeout_seconds must be <= 3600")
 
     binary = _windtrader_bin()
     command = [binary, subcommand, "--timeout", str(timeout_seconds)]
@@ -64,12 +66,25 @@ def _run_cli(subcommand: str, sysml_text: str, timeout_seconds: int = 30) -> dic
         check=False,
     )
 
+    stderr = (result.stderr or "").strip()
+
+    # Distinguish a stale/wrong CLI (argparse rejects `check`/`export` as an
+    # unknown subcommand -> exit 2 with "invalid choice") from an invalid-SysML
+    # verdict (also exit 2). A bad subcommand is an environment/install error,
+    # not a model verdict, so raise instead of reporting "invalid SysML".
+    if result.returncode == 2 and "invalid choice" in stderr:
+        raise RuntimeError(
+            "The installed WindTrader CLI does not support the "
+            f"{subcommand!r} subcommand (stale or wrong version). "
+            f"Install windtrader >= 0.2.0. stderr: {stderr}"
+        )
+
     return {
         "ok": result.returncode == 0,
         "exit_code": result.returncode,
         "command": command,
         "stdout": (result.stdout or "").strip(),
-        "stderr": (result.stderr or "").strip(),
+        "stderr": stderr,
     }
 
 

@@ -121,6 +121,24 @@ class WindTraderServerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.server._run_validation("package Demo {}", timeout_seconds=0)
 
+    def test_run_cli_rejects_oversized_timeout(self):
+        """A timeout above the 1h ceiling is rejected rather than pinning a worker."""
+        with self.assertRaises(ValueError):
+            self.server._run_cli("export", "part def P;", timeout_seconds=86400)
+
+    def test_run_cli_raises_on_stale_cli_invalid_choice(self):
+        """Argparse 'invalid choice' on a stale CLI is raised, not reported as invalid SysML."""
+        fake_result = types.SimpleNamespace(
+            returncode=2,
+            stdout="",
+            stderr="argument subcommand: invalid choice: 'export'",
+        )
+        with patch("windtrader_mcp.server._windtrader_bin", return_value="/usr/bin/windtrader"):
+            with patch("windtrader_mcp.server.subprocess.run", return_value=fake_result):
+                with self.assertRaises(RuntimeError) as ctx:
+                    self.server._run_cli("export", "part def P;", timeout_seconds=30)
+        self.assertIn("0.2.0", str(ctx.exception))
+
     def test_validate_sysml_text_runs_validation_and_returns_filename(self):
         with patch("windtrader_mcp.server._run_validation", return_value={
             "ok": True,

@@ -9,7 +9,7 @@ Deploys `windtrader-mcp` (the SysMLv2 validator MCP server) with the
 helm repo add westfall https://<chart-repo>  # or use the local chart dir
 helm upgrade --install windtrader-mcp ./deploy/charts/windtrader-mcp \
   --namespace windtrader --create-namespace \
-  --set image.tag=0.3.2
+  --set image.tag=0.4.0
 ```
 
 ## Values
@@ -17,7 +17,7 @@ helm upgrade --install windtrader-mcp ./deploy/charts/windtrader-mcp \
 | Key | Default | Description |
 |-----|---------|-------------|
 | `image.repository` | `ghcr.io/westfall-io/windtrader-mcp` | Image repo |
-| `image.tag` | `0.3.2` | Immutable semver tag (pin releases, not `latest`) |
+| `image.tag` | `0.4.0` | Immutable semver tag (pin releases, not `latest`) |
 | `replicaCount` | `1` | Keep 1: MCP sessions are stateful (in-memory) |
 | `mcp.host` | `0.0.0.0` | Bind all interfaces (required for K8s) |
 | `mcp.port` | `8000` | Container port |

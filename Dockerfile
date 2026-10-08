@@ -34,9 +34,11 @@ LABEL org.opencontainers.image.source="https://github.com/Westfall-io/windtrader
 ARG WINDTRADER_VERSION
 
 # git is required by pip's VCS backend for `pkg @ git+https://...`.
-# OpenJDK 21 headless is required to run the windtrader-java jar.
+# OpenJDK 21 headless is required to run the windtrader-java jar; pin it
+# explicitly (not default-jre-headless) so a Debian default change cannot
+# silently downgrade to 17.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends default-jre-headless git \
+    && apt-get install -y --no-install-recommends openjdk-21-jre-headless git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -58,13 +60,17 @@ RUN python -m pip install --no-cache-dir /src
 # JRE via the jar's own stdin contract (valid -> exit 0, invalid -> exit 2).
 ENV WINDTRADER_CACHE_DIR=/opt/windtrader-cache
 RUN set -eux; \
-    echo "part def P;" | windtrader --timeout 120 \
-      || echo "prewarm: windtrader exited $?" >&2; \
+    echo "part def P;" | windtrader check --timeout 120 \
+      || echo "prewarm: windtrader check exited $?" >&2; \
     test -s "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.2.0.jar"; \
     echo "part def P;" | java -jar "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.2.0.jar"; \
     if echo "part { attrib mass; }" | java -jar "$WINDTRADER_CACHE_DIR/jars/windtrader-java-0.2.0.jar" 2>/dev/null; then \
       echo "expected exit 2 for invalid input, got 0" >&2; exit 1; \
-    fi
+    fi; \
+    echo "part def P;" | windtrader export --timeout 120 >/tmp/prewarm-export.json \
+      || echo "prewarm: windtrader export exited $?" >&2; \
+    python3 -c "import json,sys; json.load(open('/tmp/prewarm-export.json'))" \
+      || { echo "prewarm: export did not produce valid JSON" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
 # Stage 2: runtime — minimal Python + Java + the installed packages + cached jar
