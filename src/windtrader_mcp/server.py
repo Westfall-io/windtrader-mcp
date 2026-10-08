@@ -16,6 +16,14 @@ from mcp.server.fastmcp import FastMCP
 _MCP_HOST = os.environ.get("WINDTRADER_MCP_HOST", "127.0.0.1").strip() or "127.0.0.1"
 _MCP_PORT = int(os.environ.get("WINDTRADER_MCP_PORT", "8000").strip() or "8000")
 
+# Argparse error markers that indicate a stale/wrong CLI (windtrader < 0.2.0 has
+# no subparsers -> "unrecognized arguments"; a 0.2.x CLI with a bad subcommand ->
+# "invalid choice"). Both exit 2, colliding with the invalid-SysML verdict.
+_ARGPARSE_SUBCOMMAND_ERRORS = (
+    "invalid choice",
+    "unrecognized arguments",
+)
+
 app = FastMCP(
     name="windtrader-mcp",
     instructions=(
@@ -69,22 +77,16 @@ def _run_cli(subcommand: str, sysml_text: str, timeout_seconds: int = 30) -> dic
     stderr = (result.stderr or "").strip()
 
     # Distinguish a stale/wrong CLI (argparse rejects `check`/`export` as an
-    # unknown subcommand -> exit 2 with "invalid choice", or "unrecognized
-    # arguments" on windtrader <= 0.1.x which has no subparsers) from an
-    # invalid-SysML verdict (also exit 2). A bad subcommand is an
-    # environment/install error, not a model verdict, so raise instead of
-    # reporting "invalid SysML".
-    _ARGPARSE_SUBCOMMAND_ERRORS = (
-        "invalid choice",
-        "unrecognized arguments",
-    )
+    # unknown subcommand -> exit 2) from an invalid-SysML verdict (also exit 2).
+    # A bad subcommand is an environment/install error, not a model verdict, so
+    # raise instead of reporting "invalid SysML".
     if result.returncode == 2 and any(
         marker in stderr for marker in _ARGPARSE_SUBCOMMAND_ERRORS
     ):
         raise RuntimeError(
-            "The installed WindTrader CLI does not support the "
-            f"{subcommand!r} subcommand (stale or wrong version). "
-            f"Install windtrader >= 0.2.0. stderr: {stderr}"
+            "The installed WindTrader CLI does not accept the "
+            f"{subcommand!r} subcommand arguments (stale or incompatible "
+            f"version). Install windtrader >= 0.2.0. stderr: {stderr}"
         )
 
     return {

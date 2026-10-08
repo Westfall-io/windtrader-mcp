@@ -43,7 +43,7 @@ pip install -e .
 Install WindTrader CLI separately (required at runtime):
 
 ```bash
-pip install git+https://github.com/Westfall-io/windtrader.git
+pip install git+https://github.com/Westfall-io/windtrader.git@v0.2.0
 ```
 
 If the executable is not named `windtrader`, set:
