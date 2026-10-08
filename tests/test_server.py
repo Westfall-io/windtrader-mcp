@@ -92,11 +92,29 @@ class WindTraderServerTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["exit_code"], 0)
         self.assertEqual(result["stdout"], "ok")
-        self.assertEqual(result["command"], ["/usr/bin/windtrader", "--timeout", "30"])
+        self.assertEqual(result["command"], ["/usr/bin/windtrader", "check", "--timeout", "30"])
 
         kwargs = mock_run.call_args.kwargs
         self.assertEqual(kwargs["input"], "package Demo {}")
         self.assertTrue(kwargs["text"])
+        self.assertEqual(kwargs["timeout"], 35)
+
+    def test_run_cli_export_builds_export_command(self):
+        """`_run_cli('export', ...)` calls `windtrader export --timeout N`."""
+        fake_result = types.SimpleNamespace(
+            returncode=0,
+            stdout='[{"@id": "x", "@type": "PartUsage"}]',
+            stderr="",
+        )
+        with patch("windtrader_mcp.server._windtrader_bin", return_value="/usr/bin/windtrader"):
+            with patch("windtrader_mcp.server.subprocess.run", return_value=fake_result) as mock_run:
+                result = self.server._run_cli("export", "part def P;", timeout_seconds=30)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["command"], ["/usr/bin/windtrader", "export", "--timeout", "30"])
+        self.assertEqual(result["stdout"], '[{"@id": "x", "@type": "PartUsage"}]')
+        kwargs = mock_run.call_args.kwargs
+        self.assertEqual(kwargs["input"], "part def P;")
         self.assertEqual(kwargs["timeout"], 35)
 
     def test_run_validation_rejects_non_positive_timeout(self):
@@ -137,6 +155,66 @@ class WindTraderServerTests(unittest.TestCase):
                 result = self.server.validate_sysml_file(str(temp_path))
 
             mock_validate.assert_called_once_with("package Demo {}")
+            self.assertEqual(result["file_name"], temp_path.name)
+            self.assertTrue(result["ok"])
+        finally:
+            temp_path.unlink(missing_ok=True)
+
+    def test_export_sysml_text_runs_export_and_returns_filename(self):
+        """`export_sysml_text` routes through `_run_cli('export')` and tags the file name."""
+        fake_result = {
+            "ok": True,
+            "exit_code": 0,
+            "command": ["windtrader", "export", "--timeout", "30"],
+            "stdout": '[{"@id": "x", "@type": "PartUsage"}]',
+            "stderr": "",
+        }
+        with patch("windtrader_mcp.server._run_cli", return_value=fake_result) as mock_cli:
+            result = self.server.export_sysml_text("part def P;", "demo.sysml")
+
+        mock_cli.assert_called_once_with("export", "part def P;", timeout_seconds=30)
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(result["file_name"], "demo.sysml")
+        self.assertIn("@type", result["stdout"])
+
+    def test_export_sysml_text_invalid_input_exits_two(self):
+        """Invalid input surfaces as exit 2 with diagnostics and no JSON."""
+        fake_result = {
+            "ok": False,
+            "exit_code": 2,
+            "command": ["windtrader", "export", "--timeout", "30"],
+            "stdout": "",
+            "stderr": "error: line=1 offset=3 near=`not'",
+        }
+        with patch("windtrader_mcp.server._run_cli", return_value=fake_result):
+            result = self.server.export_sysml_text("not sysml")
+
+        self.assertEqual(result["ok"], False)
+        self.assertEqual(result["exit_code"], 2)
+        self.assertEqual(result["stdout"], "")
+        self.assertTrue(result["stderr"].startswith("error:"))
+
+    def test_export_sysml_file_errors_for_missing_path(self):
+        with self.assertRaises(ValueError):
+            self.server.export_sysml_file("/tmp/does-not-exist.sysml")
+
+    def test_export_sysml_file_works_for_existing_file(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".sysml", delete=False, encoding="utf-8") as temp_file:
+            temp_file.write("part def P;")
+            temp_path = Path(temp_file.name)
+
+        try:
+            fake_result = {
+                "ok": True,
+                "exit_code": 0,
+                "command": ["windtrader", "export", "--timeout", "30"],
+                "stdout": '[{"@id": "x", "@type": "PartUsage"}]',
+                "stderr": "",
+            }
+            with patch("windtrader_mcp.server._run_cli", return_value=fake_result) as mock_cli:
+                result = self.server.export_sysml_file(str(temp_path))
+
+            mock_cli.assert_called_once_with("export", "part def P;", timeout_seconds=30)
             self.assertEqual(result["file_name"], temp_path.name)
             self.assertTrue(result["ok"])
         finally:

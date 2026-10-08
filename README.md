@@ -9,19 +9,24 @@ actual valid syntax by invoking WindTrader from MCP tools.
 ## What this server exposes
 
 - `validate_sysml_text(sysml_text, file_name="model.sysml")`
-  - Pipes SysMLv2 text to WindTrader over stdin.
+  - Pipes SysMLv2 text to WindTrader over stdin (`windtrader check`).
   - Returns `ok`, `exit_code`, `stdout`, `stderr`, and `command`.
 - `validate_sysml_file(path)`
   - Reads file content and validates by piping text over stdin.
+- `export_sysml_text(sysml_text, file_name="model.sysml", timeout_seconds=30)`
+  - Pipes SysMLv2 text to `windtrader export`; on success `stdout` holds the
+    SysMLv2 element JSON graph (array of API-shaped `@id`/`@type` elements).
+- `export_sysml_file(path, timeout_seconds=30)`
+  - Reads file content and exports it to the element JSON graph.
 - Resource: `windtrader://about`
 
 ## WindTrader CLI contract used by this MCP server
 
-The server invokes WindTrader in its documented argparse shape (flags only),
-for example:
+The server invokes WindTrader with a subcommand plus flags, for example:
 
 ```bash
-windtrader --timeout 30
+windtrader check --timeout 30     # validate
+windtrader export --timeout 30    # export SysMLv2 element JSON graph
 ```
 
 and sends SysML text on stdin.
